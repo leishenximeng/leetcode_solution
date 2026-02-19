@@ -485,3 +485,647 @@ WHERE CHAR_LENGTH(content) > 15;
 
 
 
+
+
+
+
+
+
+## 连接
+
+### 1378.使用唯一标识码替换员工ID
+
+这题是 LeetCode SQL 题：**1378. 使用唯一标识码替换员工ID**
+核心就是：**把 Employees 表里的 id 替换成 EmployeeUNI 表里的 unique_id** —— 本质是一个 `LEFT JOIN`。
+
+------
+
+#### 📌 题目理解
+
+有两张表：
+
+##### Employees
+
+| id   | name |
+| ---- | ---- |
+|      |      |
+
+##### EmployeeUNI
+
+| id   | unique_id |
+| ---- | --------- |
+|      |           |
+
+要求输出：
+
+| unique_id | name |
+
+⚠ 注意：
+
+- 有些员工 **可能没有 unique_id**
+- 这种情况要返回 `NULL`
+- 所以必须用 `LEFT JOIN`，不能用 `INNER JOIN`
+
+------
+
+#### ✅ SQL 写法
+
+```sql
+SELECT eu.unique_id, e.name
+FROM Employees e
+LEFT JOIN EmployeeUNI eu
+ON e.id = eu.id;
+```
+
+------
+
+#### 🔎 逻辑解释
+
+##### 第一步：以 Employees 为主表
+
+因为题目要保留所有员工（即使没有 unique_id）。
+
+```
+FROM Employees e
+```
+
+------
+
+##### 第二步：左连接 EmployeeUNI
+
+```
+LEFT JOIN EmployeeUNI eu
+ON e.id = eu.id
+```
+
+意思是：
+
+> 用 Employees.id 去匹配 EmployeeUNI.id
+
+- 如果能匹配 → 返回 unique_id
+- 如果不能匹配 → unique_id = NULL
+
+------
+
+##### 🚫 为什么不能用 INNER JOIN？
+
+如果写：
+
+```sql
+INNER JOIN EmployeeUNI eu
+```
+
+那么：
+
+- 没有 unique_id 的员工会被过滤掉
+- 结果不完整 ❌
+
+------
+
+##### 🧠 这题考什么？
+
+典型的：
+
+> “主表保留全部数据” → 用 LEFT JOIN
+
+记忆口诀：
+
+| 需求         | 用什么     |
+| ------------ | ---------- |
+| 保留左表全部 | LEFT JOIN  |
+| 保留右表全部 | RIGHT JOIN |
+| 只要匹配的   | INNER JOIN |
+
+------
+
+##### 🎯 最终标准答案
+
+```sql
+SELECT eu.unique_id, e.name
+FROM Employees e
+LEFT JOIN EmployeeUNI eu
+ON e.id = eu.id;
+```
+
+------
+
+如果你愿意，我可以再帮你：
+
+- 画一张 LEFT JOIN 的图解
+- 或出 2 道 JOIN 练习题让你巩固
+- 或总结一套 SQL Hot100 连接题模板 🚀
+
+
+
+
+
+### 1068.产品销售分析 I 
+
+#### 1068. 产品销售分析 I（连接怎么写）
+
+这题本质：
+**把 Sales 表里的 product_id 和 Product 表连起来，查出产品名 + 销售信息。**
+
+------
+
+#### 📌 表结构理解
+
+**Sales**
+
+| sale_id | product_id | year | quantity | price |
+
+**Product**
+
+| product_id | product_name |
+
+------
+
+#### 📌 题目要求
+
+输出：
+
+| product_name | year | price |
+
+也就是：
+
+- 从 Product 里拿 product_name
+- 从 Sales 里拿 year、price
+
+------
+
+#### ✅ 标准 SQL 写法
+
+```sql
+SELECT p.product_name, s.year, s.price
+FROM Sales s
+JOIN Product p
+ON s.product_id = p.product_id;
+```
+
+------
+
+#### 🔎 逻辑拆解
+
+##### 第一步：确定主表
+
+因为 year、price 在 Sales 里，所以：
+
+```
+FROM Sales s
+```
+
+------
+
+##### 第二步：连接 Product
+
+```
+JOIN Product p
+ON s.product_id = p.product_id
+```
+
+意思是：
+
+> 用 Sales.product_id 去匹配 Product.product_id
+
+------
+
+#### ❓ 为什么用 INNER JOIN？
+
+题目默认：
+
+- Sales 里的 product_id 一定在 Product 表中存在
+- 不需要保留未匹配的数据
+
+所以直接用：
+
+```
+JOIN
+```
+
+= 默认就是 `INNER JOIN`
+
+------
+
+#### 🧠 和 1378 的区别
+
+| 题号 | 用什么     | 原因           |
+| ---- | ---------- | -------------- |
+| 1378 | LEFT JOIN  | 要保留所有员工 |
+| 1068 | INNER JOIN | 只要匹配数据   |
+
+------
+
+#### 🎯 记忆技巧
+
+看到：
+
+- “查询产品名 + 销售数据”
+- 两张表
+- 用 id 关联
+
+脑子里直接浮现：
+
+```sql
+FROM 销售表
+JOIN 产品表
+ON product_id
+```
+
+------
+
+如果你愿意，我可以把：
+
+- SQL 连接题给你做一套「Hot50 JOIN 模板总结」
+- 或者讲一下三种 JOIN 的底层执行逻辑图
+
+你现在是在刷 SQL50 吗 😄
+
+
+
+### 1581.进店却未进行过交易的顾客
+
+#### 1581. 进店却未进行过交易的顾客
+
+这题本质：
+
+> 找「有 visit 记录」但「没有 transaction 记录」的顾客
+> 👉 典型 **LEFT JOIN + 判空**
+
+------
+
+#### 📌 表结构理解
+
+**Visits**
+
+| visit_id | customer_id |
+
+**Transactions**
+
+| transaction_id | visit_id | amount |
+
+关系：
+
+- Transactions.visit_id = Visits.visit_id
+
+------
+
+#### 📌 题目要求
+
+输出：
+
+| customer_id | count_no_trans |
+
+表示：
+
+- 某顾客来过几次
+- 但这些 visit 没有产生交易
+
+------
+
+#### ✅ 标准写法（推荐）
+
+```sql
+SELECT v.customer_id, COUNT(*) AS count_no_trans
+FROM Visits v
+LEFT JOIN Transactions t
+ON v.visit_id = t.visit_id
+WHERE t.transaction_id IS NULL
+GROUP BY v.customer_id;
+```
+
+------
+
+#### 🔎 思路拆解
+
+##### 第一步：从 Visits 出发
+
+因为题目是“进店的顾客”，核心是 visit。
+
+```
+FROM Visits v
+```
+
+------
+
+##### 第二步：左连接 Transactions
+
+```
+LEFT JOIN Transactions t
+ON v.visit_id = t.visit_id
+```
+
+意思：
+
+- 如果该 visit 有交易 → 能匹配
+- 如果没有交易 → t 相关字段为 NULL
+
+------
+
+##### 第三步：筛选“没有交易”
+
+```
+WHERE t.transaction_id IS NULL
+```
+
+这是关键。
+
+> LEFT JOIN 后，右表没匹配 → 全是 NULL
+
+------
+
+##### 第四步：按顾客分组统计
+
+```
+GROUP BY v.customer_id
+```
+
+统计每个顾客“无交易 visit 次数”。
+
+------
+
+#### 🧠 这题在考什么？
+
+经典模型：
+
+```
+找 A 中没有匹配 B 的数据
+```
+
+固定套路：
+
+```sql
+FROM A
+LEFT JOIN B
+ON 条件
+WHERE B.xxx IS NULL
+```
+
+记住这个结构，SQL50 至少会出现 4~5 次。
+
+------
+
+#### 🚀 再给你一个进阶写法（等价）
+
+也可以用 `NOT EXISTS`：
+
+```sql
+SELECT v.customer_id, COUNT(*) AS count_no_trans
+FROM Visits v
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM Transactions t
+    WHERE v.visit_id = t.visit_id
+)
+GROUP BY v.customer_id;
+```
+
+但 SQL50 阶段优先掌握 LEFT JOIN 写法。
+
+------
+
+你现在已经：
+
+- 会普通 JOIN
+- 会 LEFT JOIN 判空
+
+再刷几题就会开始出现 GROUP BY + HAVING 组合了 😄
+
+要不要我帮你总结一个：
+
+> “SQL50 高频套路清单（精简版）”
+
+
+
+
+
+### 197.上升的温度
+
+#### 197. 上升的温度
+
+这题本质是：
+
+> 和“前一天”做对比
+> 👉 典型 **自连接（self join）**
+
+------
+
+#### 📌 表结构
+
+**Weather**
+
+| id | recordDate | temperature |
+
+------
+
+#### 📌 题目要求
+
+找出：
+
+> 温度比“前一天”高的记录 id
+
+------
+
+#### ✅ 标准写法（自连接）
+
+```sql
+SELECT w1.id
+FROM Weather w1
+JOIN Weather w2
+ON DATEDIFF(w1.recordDate, w2.recordDate) = 1
+WHERE w1.temperature > w2.temperature;
+```
+
+------
+
+#### 🔎 思路拆解
+
+##### 第一步：为什么要自连接？
+
+因为：
+
+- 要拿“今天”
+- 又要拿“昨天”
+
+同一张表，需要用两次 → 自连接。
+
+------
+
+##### 第二步：起两个别名
+
+```
+Weather w1  → 今天
+Weather w2  → 昨天
+```
+
+------
+
+##### 第三步：匹配“昨天”
+
+```
+DATEDIFF(w1.recordDate, w2.recordDate) = 1
+```
+
+意思：
+
+> w1 比 w2 晚 1 天
+
+也就是：
+
+今天 - 昨天 = 1
+
+------
+
+##### 第四步：比较温度
+
+```
+WHERE w1.temperature > w2.temperature
+```
+
+------
+
+#### 🧠 这题考什么？
+
+核心模型：
+
+```
+和上一条数据比较
+```
+
+解决方法：
+
+| 场景       | 方法             |
+| ---------- | ---------------- |
+| 同一表对比 | 自连接           |
+| 有顺序比较 | JOIN + 日期差    |
+| 高级写法   | 窗口函数（后期） |
+
+------
+
+#### 🚀 进阶写法（用窗口函数）
+
+如果数据库支持（MySQL 8+）：
+
+```sql
+SELECT id
+FROM (
+    SELECT id,
+           temperature,
+           LAG(temperature) OVER (ORDER BY recordDate) AS prev_temp
+    FROM Weather
+) t
+WHERE temperature > prev_temp;
+```
+
+但 SQL50 阶段建议先熟练自连接。
+
+------
+
+#### 记忆模板
+
+只要看到：
+
+> 比前一天高
+> 比上一次大
+
+脑子里直接出现：
+
+```sql
+FROM 表 A
+JOIN 表 B
+ON 日期差 = 1
+WHERE A.xxx > B.xxx
+```
+
+------
+
+你现在已经刷到自连接了，说明 SQL50 进度过半了 😄
+要不要我给你画个“SQL50 难度阶段图”？
+
+
+
+
+
+### 1661.每台机器的进程平均运行时间
+
+
+
+
+
+
+
+
+
+
+
+## 聚合函数
+
+
+
+
+
+
+
+
+
+
+
+## 排序和分组
+
+
+
+
+
+
+
+
+
+
+
+## 高级查询和连接
+
+
+
+
+
+
+
+
+
+
+
+## 子查询
+
+
+
+
+
+
+
+
+
+
+
+
+
+## 高级字符串函数 / 正则表达式 / 子句
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+s
+
+
+
+
+

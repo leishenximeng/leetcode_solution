@@ -1,1 +1,1 @@
-record leetcode solution.
+record hot100 & sql50 solution.
