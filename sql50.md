@@ -621,8 +621,6 @@ ON e.id = eu.id;
 
 ### 1068.产品销售分析 I 
 
-#### 1068. 产品销售分析 I（连接怎么写）
-
 这题本质：
 **把 Sales 表里的 product_id 和 Product 表连起来，查出产品名 + 销售信息。**
 
@@ -743,8 +741,6 @@ ON product_id
 
 
 ### 1581.进店却未进行过交易的顾客
-
-#### 1581. 进店却未进行过交易的顾客
 
 这题本质：
 
@@ -900,8 +896,6 @@ GROUP BY v.customer_id;
 
 ### 197.上升的温度
 
-#### 197. 上升的温度
-
 这题本质是：
 
 > 和“前一天”做对比
@@ -1047,6 +1041,947 @@ WHERE A.xxx > B.xxx
 
 ### 1661.每台机器的进程平均运行时间
 
+这题本质：
+
+> 同一个 machine_id + process_id
+> start 时间 和 end 时间 配对
+> 然后求平均运行时间
+
+👉 典型 **自连接 + GROUP BY**
+
+------
+
+#### 📌 表结构
+
+**Activity**
+
+| machine_id | process_id | activity_type | timestamp |
+
+其中：
+
+- activity_type = 'start'
+- activity_type = 'end'
+
+每个进程：
+
+- 一条 start
+- 一条 end
+
+------
+
+#### 📌 题目要求
+
+输出：
+
+| machine_id | processing_time |
+
+processing_time 是：
+
+> 每台机器的平均运行时间
+> = 每个进程 (end - start) 的平均值
+
+------
+
+#### ✅ 标准写法（自连接）
+
+```sql
+SELECT a.machine_id,
+       ROUND(AVG(b.timestamp - a.timestamp), 3) AS processing_time
+FROM Activity a
+JOIN Activity b
+ON a.machine_id = b.machine_id
+AND a.process_id = b.process_id
+AND a.activity_type = 'start'
+AND b.activity_type = 'end'
+GROUP BY a.machine_id;
+```
+
+------
+
+#### 🔎 思路拆解
+
+##### 第一步：为什么自连接？
+
+因为：
+
+- 一条是 start
+- 一条是 end
+- 在同一张表
+
+所以必须用两次 Activity。
+
+------
+
+##### 第二步：起两个别名
+
+```
+a → start 记录
+b → end 记录
+```
+
+------
+
+##### 第三步：匹配同一个进程
+
+```
+a.machine_id = b.machine_id
+a.process_id = b.process_id
+```
+
+保证是同一机器同一进程。
+
+------
+
+##### 第四步：限制类型
+
+```
+a.activity_type = 'start'
+b.activity_type = 'end'
+```
+
+确保：
+
+- a 是开始
+- b 是结束
+
+------
+
+##### 第五步：计算运行时间
+
+```
+b.timestamp - a.timestamp
+```
+
+得到：
+
+> 单个进程运行时间
+
+------
+
+##### 第六步：求平均
+
+```
+AVG(...)
+GROUP BY machine_id
+```
+
+按机器分组。
+
+------
+
+#### 🧠 这题的固定模型
+
+看到：
+
+- 同一表
+- start / end 配对
+- 求差值
+
+脑子里立刻出现：
+
+```sql
+FROM 表 a
+JOIN 表 b
+ON 同一ID
+AND a.type = 'start'
+AND b.type = 'end'
+```
+
+------
+
+#### 🚀 进阶理解（重要）
+
+为什么不用 LEFT JOIN？
+
+因为：
+
+- 每个 start 一定有对应 end
+- 题目保证数据合法
+
+所以用 INNER JOIN。
+
+------
+
+#### ⭐ 这题在 SQL50 里的地位
+
+属于：
+
+> 中等偏简单的自连接应用
+
+难点只有一个：
+
+> 想到“同一表配对”
+
+------
+
+如果你愿意，我可以给你做一个：
+
+- 「自连接专题总结」
+- 或者整理一个 SQL50 连接类终极模板清单
+
+你现在进度已经过半了 😄
+
+
+
+
+
+### 577.员工奖金
+
+这题本质：
+
+> 查员工姓名 + 奖金
+> 只显示「奖金 < 1000 或 没有奖金」的人
+
+👉 典型 **LEFT JOIN + 条件筛选**
+
+------
+
+#### 📌 表结构
+
+**Employee**
+
+| empId | name | supervisor | salary |
+
+**Bonus**
+
+| empId | bonus |
+
+------
+
+#### 📌 题目要求
+
+输出：
+
+| name | bonus |
+
+条件：
+
+- bonus < 1000
+- 或者 bonus 是 NULL（没有奖金记录）
+
+------
+
+#### ✅ 标准写法
+
+```sql
+SELECT e.name, b.bonus
+FROM Employee e
+LEFT JOIN Bonus b
+ON e.empId = b.empId
+WHERE b.bonus < 1000 OR b.bonus IS NULL;
+```
+
+------
+
+#### 🔎 思路拆解
+
+##### 第一步：为什么 LEFT JOIN？
+
+因为：
+
+> 有些员工可能没有奖金记录
+
+如果用 INNER JOIN：
+
+- 没有奖金的人会被过滤掉 ❌
+
+所以必须用：
+
+```
+LEFT JOIN
+```
+
+保留所有员工。
+
+------
+
+##### 第二步：筛选条件
+
+```
+b.bonus < 1000 OR b.bonus IS NULL
+```
+
+为什么要加 `IS NULL`？
+
+因为：
+
+- 没有奖金记录 → bonus 为 NULL
+- NULL < 1000 是不会成立的
+- 所以必须单独写 IS NULL
+
+------
+
+#### 🧠 这题模型
+
+```
+主表保留全部
++ 右表可能不存在
++ 要筛选右表条件
+```
+
+固定结构：
+
+```sql
+FROM 主表
+LEFT JOIN 右表
+ON 条件
+WHERE 右表列 条件
+   OR 右表列 IS NULL
+```
+
+------
+
+#### ⚠ 一个容易错的写法
+
+很多人会写：
+
+```sql
+WHERE b.bonus < 1000
+```
+
+这样会：
+
+- 自动过滤 NULL
+- 变成类似 INNER JOIN 的效果 ❌
+
+------
+
+#### 🎯 一句话记忆
+
+看到：
+
+> “没有也要显示”
+
+直接反射：
+
+```
+LEFT JOIN
++ IS NULL
+```
+
+------
+
+你现在已经刷到：
+
+- 自连接
+- LEFT JOIN 判空
+- 分组 + 聚合
+
+SQL50 只剩下一些 GROUP BY + HAVING 的组合了 😄
+
+要不要我给你做个：
+
+> SQL50 高频易错点总结清单
+
+
+
+
+
+### 1280.学生们参加各科测试的次数 
+
+这题是：
+
+> 所有学生 × 所有科目
+> 统计每个学生每个科目参加考试的次数
+
+👉 典型 **笛卡尔积 + LEFT JOIN + GROUP BY**
+
+---
+
+#### 📌 表结构
+
+**Students**
+
+| student_id | student_name |
+
+**Subjects**
+
+| subject_name |
+
+**Examinations**
+
+| student_id | subject_name |
+
+---
+
+#### 📌 题目要求
+
+输出：
+
+| student_id | student_name | subject_name | attended_exams |
+
+要求：
+
+* 即使没参加考试，也要显示 0
+* 所以必须保留“所有学生 × 所有科目”
+
+---
+
+#### ✅ 标准写法
+
+```sql
+SELECT s.student_id,
+       s.student_name,
+       sub.subject_name,
+       COUNT(e.student_id) AS attended_exams
+FROM Students s
+CROSS JOIN Subjects sub
+LEFT JOIN Examinations e
+ON s.student_id = e.student_id
+AND sub.subject_name = e.subject_name
+GROUP BY s.student_id, s.student_name, sub.subject_name
+ORDER BY s.student_id, sub.subject_name;
+```
+
+---
+
+#### 🔎 思路拆解（非常重要）
+
+##### 第一步：为什么用 CROSS JOIN？
+
+因为题目要：
+
+> 每个学生 × 每个科目
+
+比如：
+
+* 3 个学生
+* 2 个科目
+
+必须得到 6 行基础数据。
+
+```
+Students × Subjects
+```
+
+这叫 **笛卡尔积**。
+
+---
+
+##### 第二步：LEFT JOIN Examinations
+
+```
+LEFT JOIN Examinations e
+```
+
+作用：
+
+* 如果参加过考试 → 能匹配
+* 如果没参加 → NULL
+
+---
+
+##### 第三步：COUNT(e.student_id)
+
+关键点来了：
+
+```
+COUNT(e.student_id)
+```
+
+为什么不写 `COUNT(*)`？
+
+因为：
+
+* COUNT(*) 会把 NULL 也算进去 ❌
+* COUNT(列名) 不会统计 NULL ✅
+
+所以：
+
+* 有考试 → +1
+* 没考试 → 0
+
+---
+
+##### 第四步：GROUP BY
+
+必须按：
+
+```
+学生 + 科目
+```
+
+分组统计次数。
+
+---
+
+#### 🧠 这题考的核心模型
+
+```
+要保留所有组合
+→ 先做 CROSS JOIN
+→ 再 LEFT JOIN 统计
+```
+
+---
+
+#### 🔥 高频套路总结
+
+| 需求         | 用法          |
+| ------------ | ------------- |
+| 全部组合     | CROSS JOIN    |
+| 可能没有记录 | LEFT JOIN     |
+| 统计次数     | COUNT(列名)   |
+| 没有记 0     | COUNT(非空列) |
+
+---
+
+#### 🎯 一句话记忆
+
+看到：
+
+> 即使没有也要显示
+> 每个 A 对应每个 B
+
+脑子立刻：
+
+```sql
+A
+CROSS JOIN B
+LEFT JOIN C
+GROUP BY
+```
+
+---
+
+这题是 SQL50 里比较“综合”的一题，你能刷到这里说明已经理解 JOIN 结构了 👍
+
+要不要我给你做个：
+
+> JOIN 类型对比 + 典型题对应表（精简版）
+
+
+
+
+
+### 570.至少有5名直接下属的经理
+
+这题本质：
+
+> 统计每个经理有多少“直接下属”
+> 人数 ≥ 5 的经理输出名字
+
+👉 典型 **自连接 + GROUP BY + HAVING**
+
+------
+
+#### 📌 表结构
+
+**Employee**
+
+| id | name | department | managerId |
+
+含义：
+
+- managerId = 上级的 id
+- 如果是 NULL → 没有上级（最高层）
+
+------
+
+#### 📌 题目要求
+
+输出：
+
+| name |
+
+这些人必须：
+
+> 至少有 5 个员工的 managerId = 他的 id
+
+------
+
+#### ✅ 标准写法（自连接）
+
+```sql
+SELECT e2.name
+FROM Employee e1
+JOIN Employee e2
+ON e1.managerId = e2.id
+GROUP BY e2.id, e2.name
+HAVING COUNT(e1.id) >= 5;
+```
+
+------
+
+#### 🔎 思路拆解
+
+##### 第一步：为什么自连接？
+
+因为：
+
+- 下属在 Employee 表
+- 经理也在 Employee 表
+- 是同一张表
+
+所以必须自连接。
+
+------
+
+##### 第二步：两个别名
+
+```
+e1 → 下属
+e2 → 经理
+```
+
+连接条件：
+
+```sql
+e1.managerId = e2.id
+```
+
+意思：
+
+> 下属的 managerId 等于 经理的 id
+
+------
+
+##### 第三步：分组统计
+
+```sql
+GROUP BY e2.id, e2.name
+```
+
+意思：
+
+> 每个经理一组
+
+------
+
+##### 第四步：HAVING 过滤
+
+```sql
+HAVING COUNT(e1.id) >= 5
+```
+
+意思：
+
+> 这组（这个经理）的下属数量 ≥ 5
+
+⚠ 注意：
+
+不能写在 WHERE 里，因为：
+
+- WHERE 在分组前执行
+- COUNT 是聚合函数
+- 聚合之后必须用 HAVING
+
+------
+
+#### 🧠 这题固定模型
+
+看到：
+
+- “至少几个”
+- “统计数量”
+- “同一张表上下级”
+
+脑子自动：
+
+```
+自连接
++ GROUP BY
++ HAVING COUNT >= n
+```
+
+------
+
+#### 🚀 更简洁写法（不用真的连两次）
+
+其实也可以这样写：
+
+```sql
+SELECT name
+FROM Employee
+WHERE id IN (
+    SELECT managerId
+    FROM Employee
+    GROUP BY managerId
+    HAVING COUNT(*) >= 5
+);
+```
+
+逻辑：
+
+1. 先找出“下属 ≥ 5 的 managerId”
+2. 再查出这些 id 对应的 name
+
+------
+
+#### ⭐ 关键知识点
+
+| 关键词     | 用法   |
+| ---------- | ------ |
+| 统计人数   | COUNT  |
+| 分组过滤   | HAVING |
+| 上下级结构 | 自连接 |
+
+------
+
+#### 一句话总结
+
+```sql
+自连接
+GROUP BY 经理
+HAVING COUNT(下属) >= 5
+```
+
+------
+
+你现在已经进入 SQL50 的“聚合 + 结构题阶段”了 👍
+
+要不要我给你讲一下：
+
+> WHERE 和 HAVING 的执行顺序区别（这个非常关键）
+
+
+
+
+
+### 1934.确认率
+
+这题本质：
+
+> 每个用户的确认率
+> = confirmed 次数 / 请求总次数
+
+👉 典型 **LEFT JOIN + GROUP BY + 条件统计**
+
+------
+
+#### 📌 表结构
+
+**Signups**
+
+| user_id | time_stamp |
+
+**Confirmations**
+
+| user_id | time_stamp | action |
+
+其中：
+
+- action = 'confirmed'
+- action = 'timeout'
+
+------
+
+#### 📌 题目要求
+
+输出：
+
+| user_id | confirmation_rate |
+
+规则：
+
+- confirmation_rate = confirmed 次数 / 总请求次数
+- 如果没有请求 → 结果为 0
+- 保留 2 位小数
+
+------
+
+#### ✅ 标准写法
+
+```sql
+SELECT s.user_id,
+       ROUND(
+           IFNULL(
+               SUM(c.action = 'confirmed') / COUNT(c.action),
+               0
+           ),
+           2
+       ) AS confirmation_rate
+FROM Signups s
+LEFT JOIN Confirmations c
+ON s.user_id = c.user_id
+GROUP BY s.user_id;
+```
+
+------
+
+#### 🔎 逻辑拆解
+
+##### 第一步：LEFT JOIN
+
+```sql
+FROM Signups s
+LEFT JOIN Confirmations c
+```
+
+为什么必须 LEFT JOIN？
+
+因为：
+
+> 有些用户可能一次确认都没有
+
+要保留所有用户。
+
+------
+
+##### 第二步：分组
+
+```sql
+GROUP BY s.user_id
+```
+
+每个用户一组。
+
+------
+
+##### 第三步：分子（confirmed 次数）
+
+```sql
+SUM(c.action = 'confirmed')
+```
+
+这是个关键技巧。
+
+在 MySQL 里：
+
+```sql
+c.action = 'confirmed'
+```
+
+会返回：
+
+- true → 1
+- false → 0
+
+所以：
+
+```sql
+SUM(c.action = 'confirmed')
+```
+
+= confirmed 的数量。
+
+------
+
+##### 第四步：分母（总请求次数）
+
+```sql
+COUNT(c.action)
+```
+
+统计所有请求次数。
+
+⚠ 注意：
+
+COUNT(列名) 不统计 NULL。
+
+如果用户没有确认记录：
+
+COUNT = 0。
+
+------
+
+##### 第五步：防止除以 0
+
+如果没有记录：
+
+```sql
+SUM(...) / COUNT(...)
+```
+
+会变成：
+
+```id="s8l6mz"
+0 / 0 → NULL
+```
+
+所以用：
+
+```sql
+IFNULL(..., 0)
+```
+
+把 NULL 变成 0。
+
+------
+
+##### 第六步：保留两位小数
+
+```sql
+ROUND(..., 2)
+```
+
+------
+
+#### 🧠 这题固定模型
+
+看到：
+
+- 比率
+- 成功次数 / 总次数
+- 即使没有记录也要显示
+
+脑子自动：
+
+```sql
+LEFT JOIN
+GROUP BY
+SUM(条件)
+/
+COUNT(列)
+```
+
+------
+
+#### 🚀 更清晰写法（CASE 版本）
+
+```sql
+SELECT s.user_id,
+       ROUND(
+           IFNULL(
+               SUM(CASE WHEN c.action = 'confirmed' THEN 1 ELSE 0 END)
+               / COUNT(c.action),
+               0
+           ),
+           2
+       ) AS confirmation_rate
+FROM Signups s
+LEFT JOIN Confirmations c
+ON s.user_id = c.user_id
+GROUP BY s.user_id;
+```
+
+逻辑完全一样，只是写法更标准。
+
+------
+
+#### ⭐ 高频考点
+
+| 技巧      | 作用               |
+| --------- | ------------------ |
+| SUM(条件) | 统计满足条件的数量 |
+| COUNT(列) | 统计非 NULL 数     |
+| LEFT JOIN | 保留所有用户       |
+| IFNULL    | 防止除 0           |
+
+------
+
+#### 一句话总结
+
+```sql
+确认率 = confirmed次数 / 总次数
+```
+
+实现套路：
+
+```sql
+LEFT JOIN
+GROUP BY
+SUM(条件) / COUNT
+ROUND
+```
+
+------
+
+你现在已经进入 SQL50 的“统计比例型题目”阶段了 👍
+
+要不要我给你整理一个：
+
+> SQL50 高频聚合函数技巧清单
 
 
 
@@ -1056,14 +1991,371 @@ WHERE A.xxx > B.xxx
 
 
 
+## 聚合函数（to be done）
 
-## 聚合函数
+### 620.有趣的电影 
+
+这题其实**不需要聚合函数（如 COUNT、SUM、GROUP BY）**，主要是条件筛选 + 排序。
+
+题目要求：
+
+- `description = 'boring'` 的电影要排除 → 只要 `description != 'boring'`
+- `id` 为奇数 → `id % 2 = 1`
+- 按 `rating` 降序排列
+
+------
+
+#### ✅ 标准写法（MySQL）
+
+```sql
+SELECT id, movie, description, rating
+FROM Cinema
+WHERE description != 'boring'
+  AND id % 2 = 1
+ORDER BY rating DESC;
+```
+
+------
+
+#### 🔎 逻辑解释
+
+##### 1️⃣ 过滤 boring 电影
+
+```sql
+description != 'boring'
+```
+
+只保留有趣的电影。
+
+------
+
+##### 2️⃣ 只要奇数 id
+
+```sql
+id % 2 = 1
+```
+
+取模运算：
+
+- 5 % 2 = 1 ✅
+- 6 % 2 = 0 ❌
+
+------
+
+##### 3️⃣ 按评分降序
+
+```sql
+ORDER BY rating DESC
+```
+
+评分高的排前面。
+
+------
+
+##### ❓ 为什么不用聚合函数？
+
+因为题目：
+
+- 没有要求分组
+- 没有要求统计数量
+- 没有求和或平均值
+
+所以 **GROUP BY 完全不需要**。
+
+------
+
+#### 🎯 一句话总结
+
+> 本题核心 = WHERE 条件筛选 + ORDER BY 排序
+> 不涉及聚合函数。
+
+------
+
+如果你愿意，我可以顺便讲讲：
+
+- `%` 在不同数据库里的写法区别
+- 或者如果题目要求“统计有趣电影数量”该怎么改成聚合版本
 
 
 
 
 
+### 1251.平均售价
 
+目标：
+计算每个产品的 **平均售价**，即总销售额 ÷ 总销售数量。
+
+公式核心：
+
+```sql
+平均售价 = SUM(price * units) / SUM(units)
+```
+
+------
+
+#### 表结构理解
+
+**Prices**
+
+| product_id | start_date | end_date | price |
+
+表示某时间段的价格。
+
+**UnitsSold**
+
+| product_id | purchase_date | units |
+
+表示某天卖出的数量。
+
+⚠ 注意：`purchase_date` 必须在价格区间内，才能用对应价格计算。
+
+------
+
+#### SQL 写法
+
+```sql
+SELECT 
+    p.product_id,
+    IFNULL(ROUND(SUM(p.price * u.units) / SUM(u.units), 2), 0) AS average_price
+FROM Prices p
+LEFT JOIN UnitsSold u
+    ON p.product_id = u.product_id
+    AND u.purchase_date BETWEEN p.start_date AND p.end_date
+GROUP BY p.product_id;
+```
+
+------
+
+#### 逻辑拆解
+
+##### 连接条件
+
+```sql
+u.purchase_date BETWEEN p.start_date AND p.end_date
+```
+
+确保使用正确时间区间的价格。
+
+##### 总销售额
+
+```sql
+SUM(p.price * u.units)
+```
+
+每次卖出数量 × 当时价格，再累加。
+
+##### 总销售数量
+
+```sql
+SUM(u.units)
+```
+
+##### 求平均售价
+
+```sql
+SUM(p.price * u.units) / SUM(u.units)
+```
+
+##### LEFT JOIN 和 IFNULL
+
+- **LEFT JOIN** 保证有价格但没卖出记录的产品也能显示
+- **IFNULL(..., 0)** 处理无销售量情况，返回 0
+
+------
+
+#### 执行顺序
+
+1. `FROM Prices`
+2. `LEFT JOIN UnitsSold` + 连接条件
+3. `GROUP BY product_id`
+4. 聚合函数计算总销售额和总销售数量
+5. 计算平均售价
+
+------
+
+如果你需要，我可以顺便画一个小表格示例，把 **价格区间 + 销售数量 + 平均售价** 可视化，让聚合函数计算过程更直观。
+
+你想让我画吗？
+
+
+
+### 1075.项目员工 I
+
+目标：
+统计每个项目中员工人数，并返回 **project_id** 以及 **员工数量**，只显示至少有一名员工的项目。
+
+这题是**典型聚合函数 + 分组**题。
+
+------
+
+#### 表结构理解
+
+**Project**
+
+| project_id | employee_id |
+
+- 每条记录表示某个员工参与了某个项目。
+
+------
+
+#### SQL 写法
+
+```sql
+SELECT 
+    project_id,
+    COUNT(employee_id) AS num_employees
+FROM Project
+GROUP BY project_id;
+```
+
+------
+
+#### 逻辑拆解
+
+##### 聚合函数 COUNT
+
+```sql
+COUNT(employee_id)
+```
+
+- 统计每个项目参与的员工数量
+- 聚合函数把同一个 `project_id` 的多条记录“压缩”为一个数量值
+
+##### 分组
+
+```sql
+GROUP BY project_id
+```
+
+- 按 `project_id` 分组
+- 每组计算一个 `COUNT(employee_id)`
+
+------
+
+#### 执行顺序
+
+1. `FROM Project` 读取表数据
+2. `GROUP BY project_id` 按项目分组
+3. `COUNT(employee_id)` 统计每组员工数
+4. `SELECT` 返回项目 ID 和员工数量
+
+------
+
+#### 小结
+
+> 本题聚合函数的作用是**统计每个项目员工的总数**，`COUNT` 是最直接的聚合函数用法。
+
+如果你想，我可以顺便画一个小表，把**每个项目对应的员工列表 → COUNT → 最终结果** 可视化，更直观理解聚合函数的效果。
+
+你想让我画吗？
+
+
+
+### 1633.各赛事的用户注册率
+
+目标：
+统计每个赛事的 **用户注册百分率** = 已注册人数 ÷ 总用户数 × 100，并保留两位小数。
+按百分比降序排列，如果相同则按 `contest_id` 升序排列。
+
+------
+
+#### 表结构理解
+
+**Users**
+
+| user_id | user_name |
+
+- 用户表，`user_id` 唯一
+
+**Register**
+
+| contest_id | user_id |
+
+- 注册表，记录某用户注册了哪些比赛
+
+------
+
+#### SQL 写法
+
+```sql
+SELECT 
+    r.contest_id,
+    ROUND(COUNT(r.user_id) * 100.0 / (SELECT COUNT(*) FROM Users), 2) AS percentage
+FROM Register r
+GROUP BY r.contest_id
+ORDER BY percentage DESC, r.contest_id ASC;
+```
+
+------
+
+#### 逻辑拆解
+
+##### 聚合函数 COUNT
+
+```sql
+COUNT(r.user_id)
+```
+
+- 统计每个比赛的注册人数
+
+##### 总用户数
+
+```sql
+(SELECT COUNT(*) FROM Users)
+```
+
+- 计算 Users 表的总用户数
+
+##### 百分比计算
+
+```sql
+COUNT(r.user_id) * 100.0 / (SELECT COUNT(*) FROM Users)
+```
+
+- 已注册人数 ÷ 总用户数 × 100
+- `ROUND(..., 2)` 保留两位小数
+
+##### 分组
+
+```sql
+GROUP BY r.contest_id
+```
+
+- 按比赛 ID 分组，统计每个比赛的注册人数
+
+##### 排序
+
+```sql
+ORDER BY percentage DESC, r.contest_id ASC
+```
+
+- 百分比高的排前面，如果相同按 `contest_id` 升序
+
+------
+
+#### 执行顺序
+
+1. `FROM Register` 读取注册表
+2. `GROUP BY contest_id` 对每场比赛分组
+3. `COUNT(user_id)` 统计每组注册人数
+4. 用总用户数计算百分比
+5. `ORDER BY` 返回排序结果
+
+------
+
+#### 小结
+
+> 聚合函数在本题中体现为：
+>
+> - **COUNT(user_id)** → 每场比赛已注册用户数
+> - **SELECT COUNT(\*) FROM Users** → 总用户数（也可以理解为常量）
+> - 聚合函数配合分组，计算每场比赛的注册百分率
+
+------
+
+如果你愿意，我可以画一个小表，把每场比赛的注册用户 → COUNT → 百分比 → 排序 可视化，这样聚合函数作用更直观。
+
+你希望我画吗？
 
 
 
